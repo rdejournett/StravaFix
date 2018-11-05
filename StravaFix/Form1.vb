@@ -1,7 +1,21 @@
 ﻿Imports System.Runtime.CompilerServices
 Imports System.IO
+Imports Gavaghan.Geodesy
+Imports System.Windows.Forms.DataVisualization.Charting
+
 Public Class Form1
+    Private totalDistance As Double = 0
     Private filename As String
+    Private _Step As Integer
+
+
+    Public Sub New()
+
+        ' This call is required by the designer.
+        InitializeComponent()
+
+        ' Add any initialization after the InitializeComponent() call.
+    End Sub
     Private Sub Form1_DragDrop(sender As Object, e As DragEventArgs) Handles MyBase.DragDrop
         Dim files() As String = e.Data.GetData(DataFormats.FileDrop)
         For Each path In files
@@ -149,7 +163,7 @@ Public Class Form1
                         Dim timestart As Integer = newline.IndexOf("<time>") + 6
                         Dim timeend As Integer = newline.LastIndexOf("</time>")
                         currtime = DateTime.Parse(newline.Substring(timestart, timeend - timestart))
-                        If ((prevtime - currtime).TotalSeconds > 30) Then
+                        If ((prevtime - currtime).TotalSeconds > 10) Then
                             ' measure hr
                             measureHR = True
                             prevtime = currtime
@@ -178,42 +192,6 @@ Public Class Form1
             If File.Exists(newfilename) Then File.Delete(newfilename)
             File.WriteAllLines(newfilename, writeArray)
 
-            '    newfiletext &= "  </trkseg>" & vbCrLf
-            '    newfiletext &= " </trk>" & vbCrLf
-            '    newfiletext &= "</gpx>" & vbCrLf
-
-
-            'newfiletext = ""
-            'Dim BufferSize As Integer = 1024
-            'Dim pos As Long = 0
-            'If deletepos > 0 Then
-            '    Dim fileToRead As String
-            '    If chkPeed.Checked Then
-            '        fileToRead = newfilename
-            '    Else
-            '        fileToRead = filename
-            '    End If
-
-
-
-            '    Using sr As StreamReader = New StreamReader(fileToRead)
-
-            '        Dim line As String = sr.ReadLine()
-            '        Do While pos < deletepos And (Not line Is Nothing)
-            '            pos += 1
-            '            newfiletext &= line & vbCrLf
-            '            line = sr.ReadLine()
-            '        Loop
-            '    End Using
-
-            '    newfiletext &= "  </trkseg>" & vbCrLf
-            '    newfiletext &= " </trk>" & vbCrLf
-            '    newfiletext &= "</gpx>" & vbCrLf
-
-            '    If File.Exists(newfilename) Then File.Delete(newfilename)
-            '    File.WriteAllText(newfilename, newfiletext)
-            'End If
-
             MsgBox("Stop fix complete!")
         End If
 
@@ -227,7 +205,161 @@ Public Class Form1
     Private Sub bgwConvert_ProgressChanged(sender As Object, e As System.ComponentModel.ProgressChangedEventArgs) Handles bgwConvert.ProgressChanged
         ProgressBar1.Value = e.ProgressPercentage
     End Sub
+
+    Private Sub Button2_Click(sender As Object, e As EventArgs) Handles btnShowMovingAvg.Click
+        'Dim filetext As String()
+        If (filename.Length = 0) Then MsgBox("You must drag a Strava gpx file")
+        Dim xml As String = File.ReadAllText(filename)
+        Dim catalog1 As gpx = xml.ParseXML(Of gpx)
+        Dim trk As New gpxTrk()
+        trk = catalog1.trk
+
+        Dim trksegList As New List(Of gpxTrkTrkpt)
+        trksegList = trk.trkseg.ToList
+
+        Dim dt As New DataTable
+        dt.Columns.Add("Time", GetType(DateTime))
+        dt.Columns.Add("Lat", GetType(Decimal))
+        dt.Columns.Add("Long", GetType(Decimal))
+        dt.Columns.Add("Elv", GetType(Decimal))
+        dt.Columns.Add("Distance", GetType(Decimal))
+        dt.Columns.Add("Speed", GetType(Decimal))
+
+        For Each t In trksegList
+            dt.Rows.Add(t.time, t.lat, t.lon, t.ele, 0)
+        Next
+        DataGridView1.DataSource = dt
+
+        For i As Integer = 1 To dt.Rows.Count - 2
+            Dim speed As Double = ComputeSpeed(dt.Rows(i), dt.Rows(i + 1))
+            If speed <> 0 Then
+                dt.Rows(i)("Speed") = speed
+            End If
+        Next
+        CreateGraph(dt)
+
+        'MsgBox(" fix complete! - Distance is " & totalDistance)
+        lblDistance.Text = String.Format("Distance: {0:0.0} miles", totalDistance)
+        Dim dt1 As DateTime = dt.Rows(0)("Time")
+        Dim dt2 As DateTime = dt.Rows(dt.Rows.Count - 1)("Time")
+        Dim ts As TimeSpan = dt2.Subtract(dt1)
+        Dim hours As Double = ts.TotalHours
+        Dim totalSpeed As Double = totalDistance / hours
+        Dim minMile As Double = 60 / totalSpeed
+        Dim minutes As Double = (totalSpeed - Math.Truncate(totalSpeed)) * 60
+
+
+        lblSpeed.Text = String.Format("Speed: {0:0.0} mph", 60 / totalSpeed)
+        lblSpeed.Text = String.Format("Speed: {0:0}:{1:00}", Math.Truncate(minMile), Math.Truncate(minutes))
+    End Sub
+    Private Function ComputeSpeed(ByRef row1 As DataRow, row2 As DataRow) As Double
+        Dim geoCalc As New GeodeticCalculator()
+        Dim reference As Ellipsoid = Ellipsoid.WGS84
+        Dim pt1 As New GlobalPosition(New GlobalCoordinates(New Angle(row1("Lat")), New Angle(row1("Long"))), row1("Elv"))
+        Dim pt2 As New GlobalPosition(New GlobalCoordinates(New Angle(row2("Lat")), New Angle(row2("Long"))), row2("Elv"))
+        Dim geoMeasurement As New GeodeticMeasurement
+        Dim p2pMiles As Double
+
+        geoMeasurement = geoCalc.CalculateGeodeticMeasurement(reference, pt1, pt2)
+        p2pMiles = geoMeasurement.PointToPointDistance / 1000.0 * 0.621371192
+        Dim dt1 As DateTime = row1("Time")
+        Dim dt2 As DateTime = row2("Time")
+        Dim ts As TimeSpan = dt2.Subtract(dt1)
+        Dim hours As Double = ts.TotalHours
+        Dim speed As Double = p2pMiles / hours
+        ComputeSpeed = speed
+        totalDistance += p2pMiles
+        row1("Distance") = totalDistance
+        row1("Speed") = speed
+
+    End Function
+
+    Private Sub CreateGraph(dt As DataTable)
+        Me.Chart1.Series.Clear()
+        Me.Chart1.Series.Add("Series1")
+        Chart1.Series("Series1").ChartType = SeriesChartType.Point
+        Chart1.Series("Series1").MarkerSize = 2
+        Chart1.ChartAreas(0).AxisX.Title = "Distance"
+        Chart1.ChartAreas(0).AxisY.Title = "Speed"
+
+        For Each row As DataRow In dt.Rows
+            Dim Xval As Decimal
+            Dim Yval As Decimal
+            If Not IsDBNull(row("Distance")) Then Xval = row("Distance")
+            If Not IsDBNull(row("Speed")) Then Yval = row("Speed")
+            If Yval <> 0 And Xval <> 0 Then Chart1.Series(0).Points.AddXY(Xval, Yval)
+
+        Next
+
+        AddMovingAverage(20)
+    End Sub
+
+    Private Sub AddMovingAverage(_step As Integer)
+        Chart1.DataManipulator.CopySeriesValues("Series1", "Series2")
+        Chart1.DataManipulator.FinancialFormula(FinancialFormula.MovingAverage, _step.ToString, "Series1:Y", "Series2:Y")
+        Chart1.Series("Series2").ChartType = SeriesChartType.FastLine
+    End Sub
+
+    Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+
+    End Sub
+
+    Private Sub Chart1_MouseEnter(sender As Object, e As EventArgs) Handles Chart1.MouseEnter
+        Me.Chart1.Focus()
+
+    End Sub
+
+    Private Sub Chart1_MouseLeave(sender As Object, e As EventArgs) Handles Chart1.MouseLeave
+        Me.Chart1.Parent.Focus()
+
+    End Sub
+
+    Private Sub btnUp_Click(sender As Object, e As EventArgs) Handles btnUp.Click
+        _Step += 1
+        If _Step <= 0 Then Exit Sub
+        Chart1.DataManipulator.FinancialFormula(FinancialFormula.MovingAverage, _Step.ToString, "Series1:Y", "Series2:Y")
+    End Sub
+
+    Private Sub btnDown_Click(sender As Object, e As EventArgs) Handles btnDown.Click
+
+        _Step -= 1
+        If _Step <= 0 Then Exit Sub
+        Chart1.DataManipulator.FinancialFormula(FinancialFormula.MovingAverage, _Step.ToString, "Series1:Y", "Series2:Y")
+
+    End Sub
+
+    Private Sub Chart1_MouseMove(sender As Object, e As MouseEventArgs) Handles Chart1.MouseMove
+        If Chart1.Series.Count = 0 Then Exit Sub
+        If Chart1.Series(0).Points.Count = 0 Then Exit Sub
+
+        Dim result As HitTestResult = Chart1.HitTest(e.X, e.Y)
+        Dim PointIndex As Integer = result.PointIndex
+        If result.PointIndex > 0 Then
+            If result.Series IsNot Nothing Then
+
+                If result.Series.Name = "Series1" Then
+                    For Each pt As DataPoint In Chart1.Series(0).Points
+                        pt.Label = Nothing
+                    Next
+                    Dim speed As String = String.Format("{0:0.0 mph}", Chart1.Series("Series1").Points(PointIndex).YValues(0))
+                    Chart1.Series("Series1").Points(PointIndex).Label = speed
+                End If
+            End If
+            'For Each pt As DataPoint In Chart1.Series(1).Points
+            '    pt.Label = Nothing
+            '    '    If e.X = pt.XValue Then
+            '    '        pt.Label = String.Format("{0:0.0 mph", pt.YValues(1))
+            '    '    End If
+            'Next
+            'Chart1.Series("Series 1").Points(PointIndex).MarkerSize = 12
+            'Chart1.Series("Series 1").Points(PointIndex).Color = Color.Red
+            'Dim speed As String = String.Format("{0:0.0 mph}", Chart1.Series("Series2").Points(PointIndex).YValues(0))
+            'Chart1.Series("Series2").Points(PointIndex).Label = speed
+        End If
+    End Sub
 End Class
+
+
 
 Public Module MyExtensions
     <Extension()>

@@ -22,6 +22,9 @@ Partial Class Form1
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
+        Dim ChartArea1 As System.Windows.Forms.DataVisualization.Charting.ChartArea = New System.Windows.Forms.DataVisualization.Charting.ChartArea()
+        Dim Legend1 As System.Windows.Forms.DataVisualization.Charting.Legend = New System.Windows.Forms.DataVisualization.Charting.Legend()
+        Dim Series1 As System.Windows.Forms.DataVisualization.Charting.Series = New System.Windows.Forms.DataVisualization.Charting.Series()
         Me.Label1 = New System.Windows.Forms.Label()
         Me.Label2 = New System.Windows.Forms.Label()
         Me.lblFileName = New System.Windows.Forms.Label()
@@ -30,6 +33,15 @@ Partial Class Form1
         Me.chkPeed = New System.Windows.Forms.CheckBox()
         Me.bgwConvert = New System.ComponentModel.BackgroundWorker()
         Me.ProgressBar1 = New System.Windows.Forms.ProgressBar()
+        Me.Chart1 = New System.Windows.Forms.DataVisualization.Charting.Chart()
+        Me.btnShowMovingAvg = New System.Windows.Forms.Button()
+        Me.DataGridView1 = New System.Windows.Forms.DataGridView()
+        Me.btnUp = New System.Windows.Forms.Button()
+        Me.btnDown = New System.Windows.Forms.Button()
+        Me.lblSpeed = New System.Windows.Forms.Label()
+        Me.lblDistance = New System.Windows.Forms.Label()
+        CType(Me.Chart1, System.ComponentModel.ISupportInitialize).BeginInit()
+        CType(Me.DataGridView1, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
         'Label1
@@ -102,12 +114,86 @@ Partial Class Form1
         Me.ProgressBar1.Size = New System.Drawing.Size(253, 22)
         Me.ProgressBar1.TabIndex = 6
         '
+        'Chart1
+        '
+        ChartArea1.Name = "ChartArea1"
+        Me.Chart1.ChartAreas.Add(ChartArea1)
+        Legend1.Name = "Legend1"
+        Me.Chart1.Legends.Add(Legend1)
+        Me.Chart1.Location = New System.Drawing.Point(12, 319)
+        Me.Chart1.Name = "Chart1"
+        Series1.ChartArea = "ChartArea1"
+        Series1.Legend = "Legend1"
+        Series1.Name = "Series1"
+        Me.Chart1.Series.Add(Series1)
+        Me.Chart1.Size = New System.Drawing.Size(948, 374)
+        Me.Chart1.TabIndex = 7
+        Me.Chart1.Text = "Chart1"
+        '
+        'btnShowMovingAvg
+        '
+        Me.btnShowMovingAvg.Location = New System.Drawing.Point(51, 281)
+        Me.btnShowMovingAvg.Name = "btnShowMovingAvg"
+        Me.btnShowMovingAvg.Size = New System.Drawing.Size(119, 23)
+        Me.btnShowMovingAvg.TabIndex = 8
+        Me.btnShowMovingAvg.Text = "Show Moving Avg"
+        Me.btnShowMovingAvg.UseVisualStyleBackColor = True
+        '
+        'DataGridView1
+        '
+        Me.DataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
+        Me.DataGridView1.Location = New System.Drawing.Point(314, 21)
+        Me.DataGridView1.Name = "DataGridView1"
+        Me.DataGridView1.Size = New System.Drawing.Size(392, 251)
+        Me.DataGridView1.TabIndex = 9
+        '
+        'btnUp
+        '
+        Me.btnUp.Location = New System.Drawing.Point(247, 278)
+        Me.btnUp.Name = "btnUp"
+        Me.btnUp.Size = New System.Drawing.Size(119, 23)
+        Me.btnUp.TabIndex = 10
+        Me.btnUp.Text = "Up"
+        Me.btnUp.UseVisualStyleBackColor = True
+        '
+        'btnDown
+        '
+        Me.btnDown.Location = New System.Drawing.Point(471, 281)
+        Me.btnDown.Name = "btnDown"
+        Me.btnDown.Size = New System.Drawing.Size(119, 23)
+        Me.btnDown.TabIndex = 11
+        Me.btnDown.Text = "Down"
+        Me.btnDown.UseVisualStyleBackColor = True
+        '
+        'lblSpeed
+        '
+        Me.lblSpeed.AutoSize = True
+        Me.lblSpeed.Location = New System.Drawing.Point(778, 79)
+        Me.lblSpeed.Name = "lblSpeed"
+        Me.lblSpeed.Size = New System.Drawing.Size(0, 13)
+        Me.lblSpeed.TabIndex = 12
+        '
+        'lblDistance
+        '
+        Me.lblDistance.AutoSize = True
+        Me.lblDistance.Location = New System.Drawing.Point(778, 123)
+        Me.lblDistance.Name = "lblDistance"
+        Me.lblDistance.Size = New System.Drawing.Size(0, 13)
+        Me.lblDistance.TabIndex = 14
+        '
         'Form1
         '
         Me.AllowDrop = True
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(284, 261)
+        Me.ClientSize = New System.Drawing.Size(1012, 696)
+        Me.Controls.Add(Me.lblDistance)
+        Me.Controls.Add(Me.lblSpeed)
+        Me.Controls.Add(Me.btnDown)
+        Me.Controls.Add(Me.btnUp)
+        Me.Controls.Add(Me.DataGridView1)
+        Me.Controls.Add(Me.btnShowMovingAvg)
+        Me.Controls.Add(Me.Chart1)
         Me.Controls.Add(Me.ProgressBar1)
         Me.Controls.Add(Me.chkPeed)
         Me.Controls.Add(Me.chkNotStopped)
@@ -117,6 +203,8 @@ Partial Class Form1
         Me.Controls.Add(Me.Label1)
         Me.Name = "Form1"
         Me.Text = "Form1"
+        CType(Me.Chart1, System.ComponentModel.ISupportInitialize).EndInit()
+        CType(Me.DataGridView1, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
@@ -130,4 +218,11 @@ Partial Class Form1
     Friend WithEvents chkPeed As CheckBox
     Friend WithEvents bgwConvert As System.ComponentModel.BackgroundWorker
     Friend WithEvents ProgressBar1 As ProgressBar
+    Friend WithEvents Chart1 As DataVisualization.Charting.Chart
+    Friend WithEvents btnShowMovingAvg As Button
+    Friend WithEvents DataGridView1 As DataGridView
+    Friend WithEvents btnUp As Button
+    Friend WithEvents btnDown As Button
+    Friend WithEvents lblSpeed As Label
+    Friend WithEvents lblDistance As Label
 End Class
